@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Хрестики-Нулики</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+        transition: background-color 0.5s ease;
+      }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 100px);
+        grid-gap: 15px;
+      }
+      .cell {
+        width: 100px;
+        height: 100px;
+        background-color: rgba(255, 238, 0, 0.271);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2rem;
+        cursor: pointer;
+        border: 1px solid black;
+        border-radius: 20px;
+        color: blue;
+      }
+      #status {
+        margin: 20px;
+        font-size: 1.5rem;
+      }
+      #resetBtn {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      .menu {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .name {
+        font-size: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="menu">
+      <p class="name">Гра Хрестики-Нулики</p>
+      <div class="board">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+      </div>
+      <div id="status">Гравець X ходить</div>
+      <button id="resetBtn">Нова гра</button>
+    </div>
+
+    <audio id="winSound" src="win.mp3"></audio>
+    <audio id="loseSound" src="lose.mp3"></audio>
+    <audio id="drawSound" src="draw.mp3"></audio>
+
+    <script>
+      const board = document.querySelectorAll(".cell");
+      const statusDisplay = document.querySelector("#status");
+      const resetButton = document.querySelector("#resetBtn");
+      const winSound = document.getElementById("winSound");
+      const loseSound = document.getElementById("loseSound");
+      const drawSound = document.getElementById("drawSound");
+      let currentPlayer = "X";
+      let gameActive = true;
+      let gameState = ["", "", "", "", "", "", "", "", ""];
+
+      const winningConditions = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6],
+      ];
+
+      function handleCellClick(clickedCellEvent) {
+        const clickedCell = clickedCellEvent.target;
+        const clickedCellIndex = parseInt(
+          clickedCell.getAttribute("data-index")
+        );
+
+        if (
+          gameState[clickedCellIndex] !== "" ||
+          !gameActive ||
+          currentPlayer !== "X"
+        ) {
+          return;
+        }
+
+        gameState[clickedCellIndex] = currentPlayer;
+        clickedCell.innerHTML = currentPlayer;
+
+        checkWinner();
+
+        if (gameActive) {
+          currentPlayer = "O";
+          setTimeout(computerMove, 500); // Комп'ютер робить хід через 0.5 секунди
+        }
+      }
+
+      function computerMove() {
+        let bestMove = findBestMove("O");
+        if (bestMove === null) {
+          bestMove = findBestMove("X");
+        }
+        if (bestMove === null) {
+          bestMove = getRandomMove();
+        }
+
+        gameState[bestMove] = "O";
+        board[bestMove].innerHTML = "O";
+        checkWinner();
+
+        if (gameActive) {
+          currentPlayer = "X";
+          statusDisplay.innerHTML = `Гравець ${currentPlayer} ходить`;
+        }
+      }
+
+      function findBestMove(player) {
+        for (let i = 0; i < winningConditions.length; i++) {
+          const [a, b, c] = winningConditions[i];
+          if (
+            gameState[a] === player &&
+            gameState[b] === player &&
+            gameState[c] === ""
+          ) {
+            return c;
+          }
+          if (
+            gameState[a] === player &&
+            gameState[b] === "" &&
+            gameState[c] === player
+          ) {
+            return b;
+          }
+          if (
+            gameState[a] === "" &&
+            gameState[b] === player &&
+            gameState[c] === player
+          ) {
+            return a;
+          }
+        }
+        return null;
+      }
+
+      function getRandomMove() {
+        const emptyCells = gameState
+          .map((cell, index) => (cell === "" ? index : null))
+          .filter((index) => index !== null);
+        return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      }
+
+      function checkWinner() {
+        let roundWon = false;
+        for (let i = 0; i < winningConditions.length; i++) {
+          const [a, b, c] = winningConditions[i];
+          if (
+            gameState[a] === "" ||
+            gameState[b] === "" ||
+            gameState[c] === ""
+          ) {
+            continue;
+          }
+          if (gameState[a] === gameState[b] && gameState[b] === gameState[c]) {
+            roundWon = true;
+            break;
+          }
+        }
+
+        if (roundWon) {
+          statusDisplay.innerHTML = `Гравець ${currentPlayer} Виграв!`;
+          gameActive = false;
+
+          if (currentPlayer === "X") {
+            document.body.style.backgroundColor = "#00FF00"; // Фон змінюється на зелений при перемозі гравця Х
+            winSound.play(); // Програвання звуку перемоги гравця Х
+          } else {
+            document.body.style.backgroundColor = "#FF0000"; // Фон змінюється на червоний при перемозі комп'ютера
+            loseSound.play(); // Програвання звуку перемоги комп'ютера (O)
+          }
+          return;
+        }
+
+        if (!gameState.includes("")) {
+          statusDisplay.innerHTML = `Нічія!`;
+          drawSound.play(); // Програвання звуку нічиї
+          document.body.style.backgroundColor = "#FFFF00"; // Фон змінюється на жовтий при нічиї
+          gameActive = false;
+          return;
+        }
+      }
+
+      function resetGame() {
+        gameActive = true;
+        currentPlayer = "X";
+        gameState = ["", "", "", "", "", "", "", "", ""];
+        statusDisplay.innerHTML = `Гравець X ходить`;
+        board.forEach((cell) => (cell.innerHTML = ""));
+        document.body.style.backgroundColor = "#f0f0f0"; // Відновлення початкового фону
+      }
+
+      board.forEach((cell) => cell.addEventListener("click", handleCellClick));
+      resetButton.addEventListener("click", resetGame);
+    </script>
+  </body>
+</html>
